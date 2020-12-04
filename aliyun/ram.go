@@ -51,11 +51,50 @@ func GetUserList() {
 	WriteExcel(policies)
 }
 
+func GetGroupList() {
+	request := ram.CreateListGroupsRequest()
+	request.Scheme = "https"
+
+	response, err := client.ListGroups(request)
+	if err != nil {
+		fmt.Print(err.Error())
+	}
+	policies := make(map[string]string)
+	//fmt.Printf("response is %#v\n", response.Users.User)
+	for _, v := range response.Groups.Group {
+		//fmt.Println(GetUserPolicy(v.UserName))
+		policies[v.GroupName] = GetGroupPolicy(v.GroupName)
+
+	}
+	for k, v := range policies {
+		fmt.Println(k, v)
+	}
+	WriteExcel(policies)
+}
+
 func GetUserPolicy(username string) string {
 	request := ram.CreateListPoliciesForUserRequest()
 	request.Scheme = "https"
 	request.UserName = username
 	response, err := client.ListPoliciesForUser(request)
+	if err != nil {
+		fmt.Print(err.Error())
+	}
+	//fmt.Printf("response is %#v\n", response.Policies)
+	policies := ""
+	for _, v := range response.Policies.Policy {
+		//policies = append(policies, v.PolicyName)
+		//policies = append(policies, v.PolicyName)
+		policies += v.PolicyName + ","
+	}
+	return policies
+}
+
+func GetGroupPolicy(groupname string) string {
+	request := ram.CreateListPoliciesForGroupRequest()
+	request.Scheme = "https"
+	request.GroupName = groupname
+	response, err := client.ListPoliciesForGroup(request)
 	if err != nil {
 		fmt.Print(err.Error())
 	}
@@ -90,5 +129,6 @@ func WriteExcel(policies map[string]string) {
 
 func main() {
 	Init()
-	GetUserList()
+	//GetUserList()
+	GetGroupList()
 }
