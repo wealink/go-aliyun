@@ -129,6 +129,6 @@ func WriteExcel(policies map[string]string) {
 
 func main() {
 	Init()
-	//GetUserList()
-	GetGroupList()
+	GetUserList()
+	//GetGroupList()
 }
