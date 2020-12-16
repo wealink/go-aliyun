@@ -48,7 +48,7 @@ func GetUserList() {
 	//for k,v := range policies{
 	//	fmt.Println(k,v)
 	//}
-	WriteExcel(policies)
+	WriteExcel(policies, "user")
 }
 
 func GetGroupList() {
@@ -69,7 +69,7 @@ func GetGroupList() {
 	for k, v := range policies {
 		fmt.Println(k, v)
 	}
-	WriteExcel(policies)
+	WriteExcel(policies, "group")
 }
 
 func GetUserPolicy(username string) string {
@@ -108,20 +108,20 @@ func GetGroupPolicy(groupname string) string {
 	return policies
 }
 
-func WriteExcel(policies map[string]string) {
+func WriteExcel(policies map[string]string, sheetname string) {
 	xlsx := excelize.NewFile()
-	index := xlsx.NewSheet("userpolicy")
+	index := xlsx.NewSheet(sheetname)
 	i := 1
 	for k, v := range policies {
 		//设置单元格的值
 		fmt.Println("A"+strconv.Itoa(i), k)
 		fmt.Println("B"+strconv.Itoa(i), v)
-		xlsx.SetCellValue("userpolicy", "A"+strconv.Itoa(i), k)
-		xlsx.SetCellValue("userpolicy", "B"+strconv.Itoa(i), v)
+		xlsx.SetCellValue(sheetname, "A"+strconv.Itoa(i), k)
+		xlsx.SetCellValue(sheetname, "B"+strconv.Itoa(i), v)
 		i++
 	}
 	xlsx.SetActiveSheet(index)
-	err := xlsx.SaveAs("./policy.xlsx")
+	err := xlsx.SaveAs(sheetname + ".xlsx")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -130,5 +130,5 @@ func WriteExcel(policies map[string]string) {
 func main() {
 	Init()
 	GetUserList()
-	//GetGroupList()
+	GetGroupList()
 }
