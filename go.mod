@@ -5,6 +5,7 @@ go 1.15
 require (
 	github.com/360EntSecGroup-Skylar/excelize v1.4.1 // indirect
 	github.com/360EntSecGroup-Skylar/excelize/v2 v2.3.1 // indirect
+	github.com/alibabacloud-go/ram-20150501 v1.0.1 // indirect
 	github.com/aliyun/alibaba-cloud-sdk-go v1.61.738 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/json-iterator/go v1.1.10 // indirect
