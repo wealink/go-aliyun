@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"github.com/360EntSecGroup-Skylar/excelize"
 	"github.com/aliyun/alibaba-cloud-sdk-go/sdk/requests"
@@ -19,10 +18,9 @@ func Init() {
 		key    string
 		secret string
 	)
-	flag.StringVar(&region, "r", "cn-shanghai", "region")
-	flag.StringVar(&key, "k", "", "accessKeyId")
-	flag.StringVar(&secret, "s", "", "accessSecret")
-	flag.Parse()
+	region = os.Getenv("REGION")
+	key = os.Getenv("ACCESS_KEY")
+	secret = os.Getenv("ACCESS_SECRET")
 	client, err = ram.NewClientWithAccessKey(region, key, secret)
 	if err != nil {
 		fmt.Print(err.Error())
