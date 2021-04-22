@@ -4,11 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/aliyun/alibaba-cloud-sdk-go/sdk/requests"
-	"github.com/aliyun/alibaba-cloud-sdk-go/services/ram"
+	"github.com/aliyun/alibaba-cloud-sdk-go/services/dts"
+	"github.com/aliyun/alibaba-cloud-sdk-go/services/rds"
 	"os"
 )
 
-var client *ram.Client
+var dtsclient *dts.Client
+var rdsclient *rds.Client
 var err error
 
 type CreateResponse struct {
@@ -27,7 +29,12 @@ func Init() {
 	region = os.Getenv("REGION")
 	key = os.Getenv("ACCESS_KEY")
 	secret = os.Getenv("ACCESS_SECRET")
-	client, err = ram.NewClientWithAccessKey(region, key, secret)
+	dtsclient, err = dts.NewClientWithAccessKey(region, key, secret)
+	if err != nil {
+		fmt.Print(err.Error())
+		os.Exit(1)
+	}
+	rdsclient, err = rds.NewClientWithAccessKey(region, key, secret)
 	if err != nil {
 		fmt.Print(err.Error())
 		os.Exit(1)
@@ -52,12 +59,44 @@ func create_instance() string {
 	request.QueryParams["DestinationRegion"] = "cn-shanghai"
 	request.QueryParams["SourceEndpointEngineName"] = "MySQL"
 	request.QueryParams["DestinationEndpointEngineName"] = "MySQL"
-	response, err := client.ProcessCommonRequest(request)
+	response, err := dtsclient.ProcessCommonRequest(request)
 	if err != nil {
 		panic(err)
 	}
 	json.Unmarshal(response.GetHttpContentBytes(), &result)
 	return result.InstanceId
+}
+
+func clean_database_pgsql(instanceid, dbname, chartset, accountname string) {
+	request := rds.CreateDeleteDatabaseRequest()
+	request.Scheme = "https"
+	request.DBInstanceId = instanceid
+	request.DBName = dbname
+	_, err := rdsclient.DeleteDatabase(request)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+
+	request1 := rds.CreateCreateDatabaseRequest()
+	request1.Scheme = "https"
+	request1.DBInstanceId = instanceid
+	request1.DBName = dbname
+	request1.CharacterSetName = chartset
+	_, err = rdsclient.CreateDatabase(request1)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+
+	request2 := rds.CreateGrantAccountPrivilegeRequest()
+	request2.Scheme = "https"
+	request2.DBInstanceId = instanceid
+	request2.AccountName = accountname
+	request2.DBName = dbname
+	request2.AccountPrivilege = "DBOwner"
+	_, err = rdsclient.GrantAccountPrivilege(request2)
+	if err != nil {
+		fmt.Print(err.Error())
+	}
 }
 
 func mysql_java_test_mulan_db_v56() {
@@ -89,7 +128,7 @@ func mysql_java_test_mulan_db_v56() {
 	request.QueryParams["DestinationEndpoint.UserName"] = "dms"
 	request.QueryParams["DestinationEndpoint.Password"] = "q0OzU4B^bpnEqkS4"
 	request.QueryParams["MigrationReserved"] = "{ 	\"autoStartModulesAfterConfig\": \"all\", 	\"targetTableMode\": 2 }"
-	response, err := client.ProcessCommonRequest(request)
+	response, err := dtsclient.ProcessCommonRequest(request)
 	if err != nil {
 		panic(err)
 	}
@@ -126,7 +165,7 @@ func mysql_java_test_mulan_db_v57() {
 	request.QueryParams["DestinationEndpoint.UserName"] = "dms"
 	request.QueryParams["DestinationEndpoint.Password"] = "q0OzU4B^bpnEqkS4"
 	request.QueryParams["MigrationReserved"] = "{ 	\"autoStartModulesAfterConfig\": \"all\", 	\"targetTableMode\": 2 }"
-	response, err := client.ProcessCommonRequest(request)
+	response, err := dtsclient.ProcessCommonRequest(request)
 	if err != nil {
 		panic(err)
 	}
@@ -162,7 +201,7 @@ func mysql_java_test_sales_wizard() {
 	request.QueryParams["DestinationEndpoint.UserName"] = "dms"
 	request.QueryParams["DestinationEndpoint.Password"] = "q0OzU4B^bpnEqkS4"
 	request.QueryParams["MigrationReserved"] = "{ 	\"autoStartModulesAfterConfig\": \"all\", 	\"targetTableMode\": 2 }"
-	response, err := client.ProcessCommonRequest(request)
+	response, err := dtsclient.ProcessCommonRequest(request)
 	if err != nil {
 		panic(err)
 	}
@@ -198,7 +237,7 @@ func mysql_java_test_wwcnapi() {
 	request.QueryParams["DestinationEndpoint.UserName"] = "dms"
 	request.QueryParams["DestinationEndpoint.Password"] = "q0OzU4B^bpnEqkS4"
 	request.QueryParams["MigrationReserved"] = "{ 	\"autoStartModulesAfterConfig\": \"all\", 	\"targetTableMode\": 2 }"
-	response, err := client.ProcessCommonRequest(request)
+	response, err := dtsclient.ProcessCommonRequest(request)
 	if err != nil {
 		panic(err)
 	}
@@ -234,7 +273,7 @@ func settlement_reports_test() {
 	request.QueryParams["DestinationEndpoint.UserName"] = "dms"
 	request.QueryParams["DestinationEndpoint.Password"] = "q0OzU4B^bpnEqkS4"
 	request.QueryParams["MigrationReserved"] = "{ 	\"autoStartModulesAfterConfig\": \"all\", 	\"targetTableMode\": 2 }"
-	response, err := client.ProcessCommonRequest(request)
+	response, err := dtsclient.ProcessCommonRequest(request)
 	if err != nil {
 		panic(err)
 	}
@@ -270,7 +309,7 @@ func hotdesk_test() {
 	request.QueryParams["DestinationEndpoint.UserName"] = "dms"
 	request.QueryParams["DestinationEndpoint.Password"] = "q0OzU4B^bpnEqkS4"
 	request.QueryParams["MigrationReserved"] = "{ 	\"autoStartModulesAfterConfig\": \"all\", 	\"targetTableMode\": 2 }"
-	response, err := client.ProcessCommonRequest(request)
+	response, err := dtsclient.ProcessCommonRequest(request)
 	if err != nil {
 		panic(err)
 	}
@@ -306,7 +345,7 @@ func translation_test() {
 	request.QueryParams["DestinationEndpoint.UserName"] = "dms"
 	request.QueryParams["DestinationEndpoint.Password"] = "q0OzU4B^bpnEqkS4"
 	request.QueryParams["MigrationReserved"] = "{ 	\"autoStartModulesAfterConfig\": \"all\", 	\"targetTableMode\": 2 }"
-	response, err := client.ProcessCommonRequest(request)
+	response, err := dtsclient.ProcessCommonRequest(request)
 	if err != nil {
 		panic(err)
 	}
@@ -342,7 +381,7 @@ func contracts_test() {
 	request.QueryParams["DestinationEndpoint.UserName"] = "dms"
 	request.QueryParams["DestinationEndpoint.Password"] = "q0OzU4B^bpnEqkS4"
 	request.QueryParams["MigrationReserved"] = "{ 	\"autoStartModulesAfterConfig\": \"all\", 	\"targetTableMode\": 2 }"
-	response, err := client.ProcessCommonRequest(request)
+	response, err := dtsclient.ProcessCommonRequest(request)
 	if err != nil {
 		panic(err)
 	}
@@ -378,7 +417,7 @@ func account_overview_test() {
 	request.QueryParams["DestinationEndpoint.UserName"] = "dms"
 	request.QueryParams["DestinationEndpoint.Password"] = "q0OzU4B^bpnEqkS4"
 	request.QueryParams["MigrationReserved"] = "{ 	\"autoStartModulesAfterConfig\": \"all\", 	\"targetTableMode\": 2 }"
-	response, err := client.ProcessCommonRequest(request)
+	response, err := dtsclient.ProcessCommonRequest(request)
 	if err != nil {
 		panic(err)
 	}
@@ -414,7 +453,7 @@ func spacecowboy_test() {
 	request.QueryParams["DestinationEndpoint.UserName"] = "dms"
 	request.QueryParams["DestinationEndpoint.Password"] = "q0OzU4B^bpnEqkS4"
 	request.QueryParams["MigrationReserved"] = "{ 	\"autoStartModulesAfterConfig\": \"all\", 	\"targetTableMode\": 2 }"
-	response, err := client.ProcessCommonRequest(request)
+	response, err := dtsclient.ProcessCommonRequest(request)
 	if err != nil {
 		panic(err)
 	}
@@ -450,7 +489,89 @@ func china_pos_payments_service_test() {
 	request.QueryParams["DestinationEndpoint.UserName"] = "dms"
 	request.QueryParams["DestinationEndpoint.Password"] = "q0OzU4B^bpnEqkS4"
 	request.QueryParams["MigrationReserved"] = "{ 	\"autoStartModulesAfterConfig\": \"all\", 	\"targetTableMode\": 2 }"
-	response, err := client.ProcessCommonRequest(request)
+	response, err := dtsclient.ProcessCommonRequest(request)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(response.GetHttpStatus())
+}
+
+//rooms-cn实例
+func keycards_test() {
+	//clean_database
+	clean_database_pgsql("pgm-uf6s09cqwe5710u5", "keycards_test", "UTF8", "api")
+	//create
+	id := create_instance()
+	//config && start
+	request := requests.NewCommonRequest()
+	request.Method = "POST"
+	request.Scheme = "https" // https | http
+	request.Domain = "dts.aliyuncs.com"
+	request.Version = "2020-01-01"
+	request.ApiName = "ConfigureMigrationJob"
+	request.QueryParams["RegionId"] = "cn-shanghai"
+	request.QueryParams["MigrationJobName"] = "keycards_test"
+	request.QueryParams["SourceEndpoint.InstanceType"] = "RDS"
+	request.QueryParams["DestinationEndpoint.InstanceType"] = "RDS"
+	request.QueryParams["MigrationMode.StructureIntialization"] = "true"
+	request.QueryParams["MigrationMode.DataIntialization"] = "true"
+	request.QueryParams["MigrationMode.DataSynchronization"] = "false"
+	request.QueryParams["MigrationObject"] = "[{\"DBName\":\"public\"}]"
+	request.QueryParams["MigrationJobId"] = id
+	request.QueryParams["SourceEndpoint.InstanceID"] = "pgm-uf6507s5zam3f23y"
+	request.QueryParams["SourceEndpoint.EngineName"] = "PostgreSQL"
+	request.QueryParams["SourceEndpoint.Region"] = "cn-shanghai"
+	request.QueryParams["SourceEndpoint.UserName"] = "wework_root"
+	request.QueryParams["SourceEndpoint.Password"] = "cFk2H28Vz0gUJwUasPvcyuL5xl8wKkcC"
+	request.QueryParams["SourceEndpoint.DatabaseName"] = "keycards_production"
+	request.QueryParams["DestinationEndpoint.InstanceID"] = "pgm-uf6s09cqwe5710u5"
+	request.QueryParams["DestinationEndpoint.EngineName"] = "PostgreSQL"
+	request.QueryParams["DestinationEndpoint.UserName"] = "api"
+	request.QueryParams["DestinationEndpoint.Password"] = "sD7C4yBvs9vPBja6"
+	request.QueryParams["DestinationEndpoint.DataBaseName"] = "keycards_test"
+	request.QueryParams["MigrationReserved"] = "{ 	\"autoStartModulesAfterConfig\": \"all\", 	\"targetTableMode\": 2 }"
+	response, err := dtsclient.ProcessCommonRequest(request)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(response.GetHttpStatus())
+}
+
+//bp-pg实例
+func fapiao_test() {
+	//clean_database
+	clean_database_pgsql("pgm-uf6ecw5006vsi4z9", "fapiao_test", "UTF8", "api")
+	//create
+	id := create_instance()
+	//config && start
+	request := requests.NewCommonRequest()
+	request.Method = "POST"
+	request.Scheme = "https" // https | http
+	request.Domain = "dts.aliyuncs.com"
+	request.Version = "2020-01-01"
+	request.ApiName = "ConfigureMigrationJob"
+	request.QueryParams["RegionId"] = "cn-shanghai"
+	request.QueryParams["MigrationJobName"] = "fapiao_test"
+	request.QueryParams["SourceEndpoint.InstanceType"] = "RDS"
+	request.QueryParams["DestinationEndpoint.InstanceType"] = "RDS"
+	request.QueryParams["MigrationMode.StructureIntialization"] = "true"
+	request.QueryParams["MigrationMode.DataIntialization"] = "true"
+	request.QueryParams["MigrationMode.DataSynchronization"] = "false"
+	request.QueryParams["MigrationObject"] = "[{\"DBName\":\"public\"}]"
+	request.QueryParams["MigrationJobId"] = id
+	request.QueryParams["SourceEndpoint.InstanceID"] = "pgm-uf68a9116jv634nk"
+	request.QueryParams["SourceEndpoint.EngineName"] = "PostgreSQL"
+	request.QueryParams["SourceEndpoint.Region"] = "cn-shanghai"
+	request.QueryParams["SourceEndpoint.UserName"] = "api"
+	request.QueryParams["SourceEndpoint.Password"] = "qu9xnfdrZgXyBkHhkLyk"
+	request.QueryParams["SourceEndpoint.DatabaseName"] = "fapiao_production"
+	request.QueryParams["DestinationEndpoint.InstanceID"] = "pgm-uf6ecw5006vsi4z9"
+	request.QueryParams["DestinationEndpoint.EngineName"] = "PostgreSQL"
+	request.QueryParams["DestinationEndpoint.UserName"] = "dms"
+	request.QueryParams["DestinationEndpoint.Password"] = "q0OzU4B^bpnEqkS4"
+	request.QueryParams["DestinationEndpoint.DataBaseName"] = "fapiao_test"
+	request.QueryParams["MigrationReserved"] = "{ 	\"autoStartModulesAfterConfig\": \"all\", 	\"targetTableMode\": 2 }"
+	response, err := dtsclient.ProcessCommonRequest(request)
 	if err != nil {
 		panic(err)
 	}
@@ -470,4 +591,7 @@ func main() {
 	//account_overview_test()
 	//china_pos_payments_service_test()
 	//spacecowboy_test()
+	//keycards_test()
+	fapiao_test()
+
 }
