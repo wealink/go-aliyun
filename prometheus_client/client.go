@@ -5,6 +5,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
 	"net/http"
+	"os"
+	"strconv"
 )
 
 //Define a struct for you collector that contains pointers
@@ -55,6 +57,8 @@ func (collector *Collector) Collect(ch chan<- prometheus.Metric) {
 	for k, v := range metricValues {
 		//Write latest value for each metric in the prometheus metric channel.
 		//Note that you can pass CounterValue, GaugeValue, or UntypedValue types here.
+		strv := strconv.Itoa(v)
+		log.Info("调用地址：" + k + "，响应状态码：" + strv)
 		ch <- prometheus.MustNewConstMetric(collector.webMetric, prometheus.GaugeValue, float64(v), k)
 	}
 }
@@ -73,6 +77,14 @@ func WebCheckGet(infos []ServiceInfo) map[string]int {
 	}
 	return webCode
 }
+
+func init() {
+	log.SetFormatter(&log.JSONFormatter{
+		TimestampFormat: "2006-01-02 15:04:05",
+	})
+	log.SetOutput(os.Stdout)
+}
+
 func main() {
 	reg := prometheus.NewPedanticRegistry()
 	web := newWebCollector()
