@@ -91,7 +91,7 @@ func main() {
 	reg.MustRegister(web)
 
 	//any metrics on the /metrics endpoint.
-	http.Handle("/metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{}))
+	http.Handle("/web_code_metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{}))
 	log.Info("Beginning to serve on port :8080")
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
