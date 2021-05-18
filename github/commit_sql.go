@@ -15,6 +15,7 @@ type RepoInfo struct {
 	branch string
 }
 
+//非阻塞式执行命令
 func ExecCmd(command string) string {
 	cmd := exec.Command("/bin/bash", "-c", command)
 	var out bytes.Buffer
