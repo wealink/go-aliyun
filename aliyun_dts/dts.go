@@ -593,5 +593,4 @@ func main() {
 	//spacecowboy_test()
 	//keycards_test()
 	fapiao_test()
-
 }
