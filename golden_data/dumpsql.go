@@ -60,7 +60,16 @@ func main() {
 			port:     "3306",
 			username: "dms",
 			password: "*v*#lgiqMuEKjheW",
-			dbs:      []string{"mulan_bis_production", "mulan_inventory_production"},
+			dbs:      []string{"mulan_bis_production"},
+		},
+		{
+			label:    "mysql-java-prod-mulan-db-v56",
+			version:  "mysql56",
+			host:     "rm-uf6prcst021us4q3pfo.mysql.rds.aliyuncs.com",
+			port:     "3306",
+			username: "dms",
+			password: "*v*#lgiqMuEKjheW",
+			dbs:      []string{"wwc_face_production"},
 		},
 	}
 	for _, v := range instances {
