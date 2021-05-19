@@ -4,7 +4,9 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	log "github.com/sirupsen/logrus"
 	"io"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"strings"
@@ -27,9 +29,9 @@ func ExecCmdNoWait(command string) string {
 	cmd.Stderr = &stderr
 	err := cmd.Run()
 	if err != nil {
-		fmt.Println(stderr.String())
+		log.Error(stderr.String())
 	} else {
-		fmt.Println(out.String())
+		log.Info(out.String())
 	}
 	resp := out.String()
 	return resp
@@ -40,7 +42,7 @@ func ExecCmdWait(command string) bool {
 	cmd := exec.Command("/bin/bash", "-c", command)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		fmt.Println(err)
+		log.Error(err)
 		return false
 	}
 	cmd.Start()
@@ -74,10 +76,11 @@ func DowloadBeforeOSS() {
 	//判断目录是否存在
 	if _, err := os.Stat(curretDate); os.IsNotExist(err) {
 		command := "ossutil cp -r oss://ep-gold-data/" + beforeData + " ." + " && " + "mv " + beforeData + " " + curretDate
-		fmt.Println(command)
+		log.Info(command)
 		_ = ExecCmdWait(command)
 	} else {
 		command := "rm -rf " + curretDate + " && " + "ossutil cp -r oss://ep-gold-data/" + beforeData + " ." + " && " + "mv " + beforeData + " " + curretDate
+		log.Info(command)
 		_ = ExecCmdWait(command)
 	}
 }
@@ -86,7 +89,7 @@ func UploadCurretOSS() {
 	curretDate, _ := GetTime()
 	//判断目录是否存在
 	command := "echo 'y'|ossutil rm -r oss://ep-gold-data/" + curretDate + " && ossutil cp -r " + curretDate + "/" + " oss://ep-gold-data/" + curretDate
-	fmt.Println(command)
+	log.Info(command)
 	_ = ExecCmdWait(command)
 }
 
@@ -110,7 +113,7 @@ func GetCommitSqlFilePath(repoinfo RepoInfo, curretDate string) []string {
 func MergeCommitSqlFile(repoinfo RepoInfo, paths []string) {
 	curretDate, _ := GetTime()
 	baseDir, _ := os.Getwd()
-	commitFile := baseDir + "/" + curretDate + "/" + repoinfo.database + "/" + "add-" + curretDate + ".sql"
+	commitFile := baseDir + "/" + curretDate + "/" + repoinfo.database + "/" + "update-" + curretDate + ".sql"
 	//因为是追加文件，防止多次跑
 	//if _, err := os.Stat(commitFile); os.IsNotExist(err) {
 
@@ -124,8 +127,73 @@ func MergeCommitSqlFile(repoinfo RepoInfo, paths []string) {
 		_ = ExecCmdNoWait(command)
 	}
 }
+
+//数据集导入
+type InstanceInfo struct {
+	env      string
+	label    string
+	version  string
+	host     string
+	port     string
+	username string
+	password string
+	dbs      []string
+}
+
+func GetDirFile(path string) []string {
+	var temp []string
+	//获取文件或目录相关信息
+	fileInfoList, err := ioutil.ReadDir(path)
+	if err != nil {
+		log.Error(err)
+	}
+	for i := range fileInfoList {
+		//fmt.Println(fileInfoList[i].Name())
+		temp = append(temp, fileInfoList[i].Name())
+	}
+	return temp
+}
+
+func InputInstanceFromFile(instances []InstanceInfo) {
+	curretDate, beforeData := GetTime()
+	//判断目录是否存在
+	if _, err := os.Stat(curretDate); os.IsNotExist(err) {
+		command := "ossutil cp -r oss://ep-gold-data/" + beforeData + " ." + " && " + "mv " + beforeData + " " + curretDate
+		log.Info(command)
+		_ = ExecCmdWait(command)
+	}
+	ossdbs := GetDirFile(curretDate)
+	for _, ossdb := range ossdbs {
+		for _, instance := range instances {
+			for _, instancedb := range instance.dbs {
+				if ossdb == instancedb {
+					sqlfiles := GetDirFile(curretDate + "/" + ossdb)
+					for _, sqlfile := range sqlfiles {
+						filepath := curretDate + "/" + ossdb + "/" + sqlfile
+						if instance.version == "mysql56" || instance.version == "mysql57" {
+							command := "mysql -h" + instance.host + " -P" + instance.port + " -u" + instance.username + " -p'" + instance.password + "' " + instancedb + "_" + instance.env + " < " + filepath
+							log.Info(command)
+							_ = ExecCmdWait(command)
+						} else {
+							log.Info(ossdb, "pgsql10")
+						}
+					}
+				}
+			}
+		}
+	}
+
+}
+
+func init() {
+	log.SetFormatter(&log.JSONFormatter{
+		TimestampFormat: "2006-01-02 15:04:05",
+	})
+	log.SetOutput(os.Stdout)
+}
+
 func main() {
-	//job功能
+	//获取数据集
 	repoinfos := []RepoInfo{
 		{
 			reponame: "achievement-service",
@@ -152,9 +220,32 @@ func main() {
 	for _, repoinfo := range repoinfos {
 		paths := GetCommitSqlFilePath(repoinfo, curretDate)
 		MergeCommitSqlFile(repoinfo, paths)
-		fmt.Println(repoinfo)
+		log.Info(repoinfo)
 	}
 	UploadCurretOSS()
 
-	//
+	//数据集导入
+	instanceinfos := []InstanceInfo{
+		{
+			env:      "test",
+			label:    "mysql-java-test-mulan-db-v56",
+			version:  "mysql56",
+			host:     "rm-uf6g6uhcktm12y1ik5o.mysql.rds.aliyuncs.com",
+			port:     "3306",
+			username: "dms",
+			password: "q0OzU4B^bpnEqkS4",
+			dbs:      []string{"wwc_face"},
+		},
+		{
+			env:      "test",
+			label:    "mysql-java-test-mulan-db-v57",
+			version:  "mysql57",
+			host:     "rm-uf65m74z317qid2i8oo.mysql.rds.aliyuncs.com",
+			port:     "3306",
+			username: "dms",
+			password: "q0OzU4B^bpnEqkS4",
+			dbs:      []string{"mulan_bis"},
+		},
+	}
+	InputInstanceFromFile(instanceinfos)
 }
