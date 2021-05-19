@@ -83,9 +83,9 @@ func DowloadBeforeOSS() {
 }
 
 func UploadCurretOSS() {
-	curretDate, beforeData := GetTime()
+	curretDate, _ := GetTime()
 	//判断目录是否存在
-	command := "ossutil cp -r oss://ep-gold-data/" + beforeData + " ." + " && " + "mv " + beforeData + " " + curretDate
+	command := "echo 'y'|ossutil rm -r oss://ep-gold-data/" + curretDate + " && ossutil cp -r " + curretDate + "/" + " oss://ep-gold-data/" + curretDate
 	fmt.Println(command)
 	_ = ExecCmdWait(command)
 }
@@ -110,7 +110,7 @@ func GetCommitSqlFilePath(repoinfo RepoInfo, curretDate string) []string {
 func MergeCommitSqlFile(repoinfo RepoInfo, paths []string) {
 	curretDate, _ := GetTime()
 	baseDir, _ := os.Getwd()
-	commitFile := baseDir + "/" + curretDate + "/" + repoinfo.database + "/" + "add.sql"
+	commitFile := baseDir + "/" + curretDate + "/" + repoinfo.database + "/" + "add-" + curretDate + ".sql"
 	//因为是追加文件，防止多次跑
 	//if _, err := os.Stat(commitFile); os.IsNotExist(err) {
 
@@ -125,6 +125,7 @@ func MergeCommitSqlFile(repoinfo RepoInfo, paths []string) {
 	}
 }
 func main() {
+	//job功能
 	repoinfos := []RepoInfo{
 		{
 			reponame: "achievement-service",
@@ -153,5 +154,7 @@ func main() {
 		MergeCommitSqlFile(repoinfo, paths)
 		fmt.Println(repoinfo)
 	}
+	UploadCurretOSS()
 
+	//
 }
