@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"fmt"
 	log "github.com/sirupsen/logrus"
 	"io"
 	"io/ioutil"
@@ -73,6 +74,7 @@ func GetTime() (string, string) {
 func DowloadBeforeOSS() {
 	curretDate, beforeData := GetTime()
 	//判断目录是否存在
+	log.Info("开始下载" + beforeData + "Golden Data数据集")
 	if _, err := os.Stat(curretDate); os.IsNotExist(err) {
 		command := "ossutil cp -r oss://ep-gold-data/" + beforeData + " ." + " && " + "mv " + beforeData + " " + curretDate
 		log.Info(command)
@@ -85,6 +87,7 @@ func DowloadBeforeOSS() {
 }
 
 func UploadCurretOSS() {
+	log.Info("开始下载今天Golden Data数据集")
 	curretDate, _ := GetTime()
 	//判断目录是否存在
 	command := "echo 'y'|ossutil rm -r oss://ep-gold-data/" + curretDate + " && ossutil cp -r " + curretDate + "/" + " oss://ep-gold-data/" + curretDate
@@ -96,10 +99,10 @@ func GetCommitSqlFilePath(repoinfo RepoInfo, curretDate string) []string {
 	//拉取代码
 	if _, err := os.Stat(repoinfo.reponame); os.IsNotExist(err) {
 		command := "git clone -b " + repoinfo.branch + " " + repoinfo.url
-		_ = ExecCmdNoWait(command)
+		_ = ExecCmdWait(command)
 	} else {
 		command := "cd " + repoinfo.reponame + " && git pull"
-		_ = ExecCmdNoWait(command)
+		_ = ExecCmdWait(command)
 	}
 	//获取相对时间的commit sql path
 	command := "cd " + repoinfo.reponame + " && git log --after={" + curretDate + "} -p|grep '^+++'|grep 'sql'|awk '{print $NF}'|sed 's#b/##'|sort|uniq"
@@ -184,6 +187,53 @@ func InputInstanceFromFile(instances []InstanceInfo) {
 
 }
 
+func GetIntEnvDeployStatus() {
+	curretDate, _ := GetTime()
+	//拉取代码
+	if _, err := os.Stat("china-self-service"); os.IsNotExist(err) {
+		command := "git clone -b auto-envs git@github.com:WeWork-China/china-self-service.git"
+		log.Info(command)
+		_ = ExecCmdWait(command)
+	} else {
+		command := "rm -rf china-self-service && git clone -b auto-envs git@github.com:WeWork-China/china-self-service.git"
+		log.Info(command)
+		_ = ExecCmdWait(command)
+	}
+	//获取int环境部署状态
+	command := "json2hcl -reverse < china-self-service/config/envs/envs.auto.tfvars|jq '.environments[0].int'"
+	log.Info(command)
+	result := ExecCmdNoWait(command)
+	fmt.Println(result)
+
+	//拉取master分支
+	if _, err := os.Stat("china-self-service"); os.IsNotExist(err) {
+		command := "git clone -b master git@github.com:WeWork-China/china-self-service.git"
+		log.Info(command)
+		_ = ExecCmdWait(command)
+	} else {
+		command := "rm -rf china-self-service && git clone -b master git@github.com:WeWork-China/china-self-service.git && cd china-self-service && git checkout -b " + curretDate
+		log.Info(command)
+		_ = ExecCmdWait(command)
+	}
+	//修改test环境配置
+	command = "json2hcl -reverse < china-self-service/config/envs/envs.auto.tfvars|jq '.environments[0].test=" + result + "'| json2hcl > test.txt && mv test.txt china-self-service/config/envs/envs.auto.tfvars"
+	log.Info(command)
+	_ = ExecCmdWait(command)
+	//push分支
+	command = "cd china-self-service && git add . && git commit -m '" + curretDate + "' && git push --set-upstream origin " + curretDate
+	log.Info(command)
+	_ = ExecCmdWait(command)
+	//创建pr信息
+	command = "echo 'int->test\n" + curretDate + "\ndeploy\n' > message.txt"
+	log.Info(command)
+	_ = ExecCmdWait(command)
+	//创建自动合并的pr
+	command = "cd china-self-service && hub pull-request -l automerge --base master --head " + curretDate + " -F ../message.txt"
+	log.Info(command)
+	_ = ExecCmdWait(command)
+
+}
+
 func init() {
 	log.SetFormatter(&log.JSONFormatter{
 		TimestampFormat: "2006-01-02 15:04:05",
@@ -192,59 +242,62 @@ func init() {
 }
 
 func main() {
-	//获取数据集
-	repoinfos := []RepoInfo{
-		{
-			reponame: "achievement-service",
-			url:      "git@github.com:WeWork-China/achievement-service.git",
-			branch:   "master",
-			database: "achievement",
-		},
-		{
-			reponame: "china-building-info-service",
-			url:      "git@github.com:WeWork-China/china-building-info-service.git",
-			branch:   "master",
-			database: "mulan_bis",
-		},
-		{
-			reponame: "chinaos-faceservice",
-			url:      "git@github.com:WeWork-China/chinaos-faceservice.git",
-			branch:   "master",
-			database: "wwc_face",
-		},
-	}
+	////获取数据集
+	//repoinfos := []RepoInfo{
+	//	{
+	//		reponame: "achievement-service",
+	//		url:      "git@github.com:WeWork-China/achievement-service.git",
+	//		branch:   "master",
+	//		database: "achievement",
+	//	},
+	//	{
+	//		reponame: "china-building-info-service",
+	//		url:      "git@github.com:WeWork-China/china-building-info-service.git",
+	//		branch:   "master",
+	//		database: "mulan_bis",
+	//	},
+	//	{
+	//		reponame: "chinaos-faceservice",
+	//		url:      "git@github.com:WeWork-China/chinaos-faceservice.git",
+	//		branch:   "master",
+	//		database: "wwc_face",
+	//	},
+	//}
+	//
+	//curretDate, _ := GetTime()
+	//DowloadBeforeOSS()
+	//for _, repoinfo := range repoinfos {
+	//	paths := GetCommitSqlFilePath(repoinfo, curretDate)
+	//	MergeCommitSqlFile(repoinfo, paths)
+	//	log.Info(repoinfo)
+	//}
+	//UploadCurretOSS()
+	//
+	//////数据集导入
+	//instanceinfos := []InstanceInfo{
+	//	{
+	//		env:      "test",
+	//		label:    "mysql-java-test-mulan-db-v56",
+	//		version:  "mysql56",
+	//		host:     "rm-uf6g6uhcktm12y1ik5o.mysql.rds.aliyuncs.com",
+	//		port:     "3306",
+	//		username: "dms",
+	//		password: "q0OzU4B^bpnEqkS4",
+	//		dbs:      []string{"wwc_face"},
+	//	},
+	//	{
+	//		env:      "test",
+	//		label:    "mysql-java-test-mulan-db-v57",
+	//		version:  "mysql57",
+	//		host:     "rm-uf65m74z317qid2i8oo.mysql.rds.aliyuncs.com",
+	//		port:     "3306",
+	//		username: "dms",
+	//		password: "q0OzU4B^bpnEqkS4",
+	//		dbs:      []string{"mulan_bis"},
+	//	},
+	//}
+	//InputInstanceFromFile(instanceinfos)
 
-	curretDate, _ := GetTime()
-	DowloadBeforeOSS()
-	for _, repoinfo := range repoinfos {
-		paths := GetCommitSqlFilePath(repoinfo, curretDate)
-		MergeCommitSqlFile(repoinfo, paths)
-		log.Info(repoinfo)
-	}
-	UploadCurretOSS()
-
-	////数据集导入
-	instanceinfos := []InstanceInfo{
-		{
-			env:      "test",
-			label:    "mysql-java-test-mulan-db-v56",
-			version:  "mysql56",
-			host:     "rm-uf6g6uhcktm12y1ik5o.mysql.rds.aliyuncs.com",
-			port:     "3306",
-			username: "dms",
-			password: "q0OzU4B^bpnEqkS4",
-			dbs:      []string{"wwc_face"},
-		},
-		{
-			env:      "test",
-			label:    "mysql-java-test-mulan-db-v57",
-			version:  "mysql57",
-			host:     "rm-uf65m74z317qid2i8oo.mysql.rds.aliyuncs.com",
-			port:     "3306",
-			username: "dms",
-			password: "q0OzU4B^bpnEqkS4",
-			dbs:      []string{"mulan_bis"},
-		},
-	}
-	InputInstanceFromFile(instanceinfos)
+	//部署微服务
+	GetIntEnvDeployStatus()
 }
