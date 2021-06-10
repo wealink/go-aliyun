@@ -51,11 +51,11 @@ func ExecCmdWait(command string) bool {
 	reader := bufio.NewReader(stdout)
 	//实时循环读取输出流中的一行内容
 	for {
-		_, err2 := reader.ReadString('\n')
+		line, err2 := reader.ReadString('\n')
 		if err2 != nil || io.EOF == err2 {
 			break
 		}
-		//fmt.Println(line)
+		fmt.Println(line)
 	}
 
 	//阻塞直到该命令执行完成，该命令必须是被Start方法开始执行的
