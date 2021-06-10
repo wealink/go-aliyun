@@ -6,6 +6,7 @@ require (
 	github.com/360EntSecGroup-Skylar/excelize v1.4.1
 	github.com/360EntSecGroup-Skylar/excelize/v2 v2.3.1 // indirect
 	github.com/Shopify/goreferrer v0.0.0-20210407190730-c9ba3cb61340 // indirect
+	github.com/alibabacloud-go/cms-20190101/v2 v2.0.1 // indirect
 	github.com/alibabacloud-go/ram-20150501 v1.0.1 // indirect
 	github.com/aliyun/alibaba-cloud-sdk-go v1.61.738
 	github.com/andybalholm/brotli v1.0.1 // indirect

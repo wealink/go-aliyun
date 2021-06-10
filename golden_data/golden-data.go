@@ -101,7 +101,7 @@ func GetCommitSqlFilePath(repoinfo RepoInfo, curretDate string) []string {
 		command := "git clone -b " + repoinfo.branch + " " + repoinfo.url
 		_ = ExecCmdWait(command)
 	} else {
-		command := "cd " + repoinfo.reponame + " && git pull"
+		command := "cd " + repoinfo.reponame + " && git checkout " + repoinfo.branch + " && git pull"
 		_ = ExecCmdWait(command)
 	}
 	//获取相对时间的commit sql path
@@ -177,7 +177,9 @@ func InputInstanceFromFile(instances []InstanceInfo) {
 							log.Info(command)
 							_ = ExecCmdWait(command)
 						} else {
-							log.Info(ossdb, "pgsql10")
+							command := "export PGPASSWORD=" + instance.password + " && psql -U " + instance.username + " -h " + instance.host + " -p " + instance.port + " -v ON_ERROR_STOP=ON -f " + filepath + " " + instancedb + "_" + instance.env
+							log.Info(command)
+							_ = ExecCmdWait(command)
 						}
 					}
 				}
@@ -187,7 +189,7 @@ func InputInstanceFromFile(instances []InstanceInfo) {
 
 }
 
-func GetIntEnvDeployStatus() {
+func DeployTestEnv() {
 	curretDate, _ := GetTime()
 	//拉取代码
 	if _, err := os.Stat("china-self-service"); os.IsNotExist(err) {
@@ -234,6 +236,23 @@ func GetIntEnvDeployStatus() {
 
 }
 
+func RunAPITest() {
+	//拉取代码
+	if _, err := os.Stat("wework-api-autotest"); os.IsNotExist(err) {
+		command := "git clone -b master git@github.com:WeWork-China/wework-api-autotest.git"
+		log.Info(command)
+		_ = ExecCmdWait(command)
+	} else {
+		command := "rm -rf wework-api-autotest && git clone git@github.com:WeWork-China/wework-api-autotest.git"
+		log.Info(command)
+		_ = ExecCmdWait(command)
+	}
+	//执行自动化测试框架
+	command := "cd wework-api-autotest && mvn clean test"
+	log.Info(command)
+	_ = ExecCmdWait(command)
+}
+
 func init() {
 	log.SetFormatter(&log.JSONFormatter{
 		TimestampFormat: "2006-01-02 15:04:05",
@@ -242,62 +261,75 @@ func init() {
 }
 
 func main() {
-	////获取数据集
-	//repoinfos := []RepoInfo{
-	//	{
-	//		reponame: "achievement-service",
-	//		url:      "git@github.com:WeWork-China/achievement-service.git",
-	//		branch:   "master",
-	//		database: "achievement",
-	//	},
-	//	{
-	//		reponame: "china-building-info-service",
-	//		url:      "git@github.com:WeWork-China/china-building-info-service.git",
-	//		branch:   "master",
-	//		database: "mulan_bis",
-	//	},
-	//	{
-	//		reponame: "chinaos-faceservice",
-	//		url:      "git@github.com:WeWork-China/chinaos-faceservice.git",
-	//		branch:   "master",
-	//		database: "wwc_face",
-	//	},
-	//}
-	//
-	//curretDate, _ := GetTime()
-	//DowloadBeforeOSS()
-	//for _, repoinfo := range repoinfos {
-	//	paths := GetCommitSqlFilePath(repoinfo, curretDate)
-	//	MergeCommitSqlFile(repoinfo, paths)
-	//	log.Info(repoinfo)
-	//}
-	//UploadCurretOSS()
-	//
-	//////数据集导入
-	//instanceinfos := []InstanceInfo{
-	//	{
-	//		env:      "test",
-	//		label:    "mysql-java-test-mulan-db-v56",
-	//		version:  "mysql56",
-	//		host:     "rm-uf6g6uhcktm12y1ik5o.mysql.rds.aliyuncs.com",
-	//		port:     "3306",
-	//		username: "dms",
-	//		password: "q0OzU4B^bpnEqkS4",
-	//		dbs:      []string{"wwc_face"},
-	//	},
-	//	{
-	//		env:      "test",
-	//		label:    "mysql-java-test-mulan-db-v57",
-	//		version:  "mysql57",
-	//		host:     "rm-uf65m74z317qid2i8oo.mysql.rds.aliyuncs.com",
-	//		port:     "3306",
-	//		username: "dms",
-	//		password: "q0OzU4B^bpnEqkS4",
-	//		dbs:      []string{"mulan_bis"},
-	//	},
-	//}
-	//InputInstanceFromFile(instanceinfos)
+	//获取数据集
+	repoinfos := []RepoInfo{
+		{
+			reponame: "china-building-info-service",
+			url:      "git@github.com:WeWork-China/china-building-info-service.git",
+			branch:   "develop",
+			database: "mulan_bis",
+		},
+		{
+			reponame: "china-pricing-service",
+			url:      "git@github.com:WeWork-China/china-pricing-service.git",
+			branch:   "develop",
+			database: "wwc_pricing",
+		},
+		{
+			reponame: "mulan-inventory-service",
+			url:      "git@github.com:WeWork-China/mulan-inventory-service.git",
+			branch:   "develop",
+			database: "mulan_inventory",
+		},
+	}
+
+	curretDate, _ := GetTime()
+	DowloadBeforeOSS()
+	for _, repoinfo := range repoinfos {
+		paths := GetCommitSqlFilePath(repoinfo, curretDate)
+		MergeCommitSqlFile(repoinfo, paths)
+		log.Info(repoinfo)
+	}
+	UploadCurretOSS()
+
+	//数据集导入
+	instanceinfos := []InstanceInfo{
+		{
+			env:      "test",
+			label:    "mysql-java-test-mulan-db-v56",
+			version:  "mysql56",
+			host:     "rm-uf6g6uhcktm12y1ik5o.mysql.rds.aliyuncs.com",
+			port:     "3306",
+			username: "dms",
+			password: "q0OzU4B^bpnEqkS4",
+			dbs:      []string{},
+		},
+		{
+			env:      "test",
+			label:    "mysql-java-test-mulan-db-v57",
+			version:  "mysql57",
+			host:     "rm-uf65m74z317qid2i8oo.mysql.rds.aliyuncs.com",
+			port:     "3306",
+			username: "dms",
+			password: "q0OzU4B^bpnEqkS4",
+			dbs:      []string{"mulan_bis", "wwc_pricing", "mulan_inventory", "mulan_order", "mulan_credits"},
+		},
+		{
+			env:      "test",
+			label:    "bp-pg-test",
+			version:  "pgsql10",
+			host:     "pgm-uf6ecw5006vsi4z91o.pg.rds.aliyuncs.com",
+			port:     "3433",
+			username: "dms",
+			password: "q0OzU4B^bpnEqkS4",
+			dbs:      []string{"china_reservations_service"},
+		},
+	}
+	InputInstanceFromFile(instanceinfos)
 
 	//部署微服务
-	GetIntEnvDeployStatus()
+	DeployTestEnv()
+
+	//自动化测试
+	RunAPITest()
 }
